@@ -1,0 +1,146 @@
+using Sabio.Data.Providers;
+using Sabio.Models.Domain.Rating;
+using Sabio.Models.Domain;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Sabio.Models.Domain.InviteMembers;
+using System.Data.SqlClient;
+using Sabio.Data;
+using Sabio.Services.Interfaces;
+using Sabio.Models.Requests.Ratings;
+using Sabio.Models.Requests.InviteMembers;
+using Sabio.Models;
+
+namespace Sabio.Services
+{
+    public class InviteMemberService : IInviteMemberService
+    {
+        IDataProvider _data = null;
+
+        public InviteMemberService(IDataProvider data)
+        {
+            _data = data;
+        }
+
+        public void DeleteById(int id)
+        {
+            string procName = "[dbo].[InviteMembers_Delete_ById]";
+
+            _data.ExecuteNonQuery(procName, inputParamMapper: delegate (SqlParameterCollection col)
+            {
+                col.AddWithValue("@Id", id);
+            },
+            returnParameters: null);
+        }
+
+        public void DeleteByCreatedBy(int id, int userId)
+        {
+            string procName = "[dbo].[InviteMembers_Delete_ByCreatedBy]";
+
+            _data.ExecuteNonQuery(procName, inputParamMapper: delegate (SqlParameterCollection col)
+            {
+                col.AddWithValue("@Id", id);
+                col.AddWithValue("@CreatedBy", userId);
+            },
+            returnParameters: null);
+        }
+
+        public InviteMemberEmail Add(InviteMemberAddRequest model, IUserAuthData user)
+        {
+            string procName = "[dbo].[InviteMembers_Insert]";
+            InviteMemberEmail newMember = new InviteMemberEmail();
+            Guid token = Guid.NewGuid();
+            int id = 0;
+
+            _data.ExecuteNonQuery(procName, inputParamMapper: delegate (SqlParameterCollection col)
+            {
+                AddCommonParams(model, col, token, user);
+
+                SqlParameter idOut = new SqlParameter("@Id", SqlDbType.Int);
+                idOut.Direction = ParameterDirection.Output;
+
+                col.Add(idOut);
+            }
+            , returnParameters: delegate (SqlParameterCollection returnCollection)
+            {
+                object oId = returnCollection["@Id"].Value;
+                int.TryParse(oId.ToString(), out id);
+            });
+
+            newMember.Email = model.Email;
+            newMember.Token = token;
+            newMember.Id = id;
+
+            return newMember;
+        }
+
+        public InviteMember GetByToken(string token)
+        {
+            string procName = "[dbo].[InviteMembers_Select_ByToken]";
+            InviteMember member = null;
+
+            _data.ExecuteCmd(procName, inputParamMapper: delegate (SqlParameterCollection col)
+            {
+                col.AddWithValue("@Token", token);
+            }
+            , singleRecordMapper: delegate (IDataReader reader, short set)
+            {
+                int startingIndex = 0;
+                member = MapSingleInviteMember(reader, ref startingIndex);
+            });
+            return member;
+        }
+
+        private static void AddCommonParams(InviteMemberAddRequest model, SqlParameterCollection col, Guid token, IUserAuthData user)
+        {
+            int orgId = 2;
+            col.AddWithValue("@FirstName", model.FirstName);
+            col.AddWithValue("@LastName", model.LastName);
+            col.AddWithValue("@Email", model.Email);
+            col.AddWithValue("@Token", token);
+            col.AddWithValue("@UserRoleTypeId", model.UserRoleTypeId);
+            col.AddWithValue("@OrganizationId", orgId);
+            col.AddWithValue("@CreatedBy", user.Id);
+            col.AddWithValue("@PositionType", model.PositionType);
+        }
+        private InviteMember MapSingleInviteMember(IDataReader reader, ref int startingIndex)
+        {
+            InviteMember member = new InviteMember();
+
+            member.Id = reader.GetSafeInt32(startingIndex++);
+            member.FirstName = reader.GetSafeString(startingIndex++);
+            member.LastName = reader.GetSafeString(startingIndex++);
+            member.Email = reader.GetSafeString(startingIndex++);
+            member.Token = reader.GetSafeString(startingIndex++);
+
+            member.UserRoleType = new LookUp();
+            member.UserRoleType.Id = reader.GetSafeInt32(startingIndex++);
+            member.UserRoleType.Name = reader.GetSafeString(startingIndex++);
+
+            member.PositionType = new LookUp();
+            member.PositionType.Id = reader.GetSafeInt32(startingIndex++);
+            member.PositionType.Name = reader.GetSafeString(startingIndex++);
+
+            member.OrganizationId = new LookUp();
+            member.OrganizationId.Id = reader.GetSafeInt32(startingIndex++);
+            member.OrganizationId.Name = reader.GetSafeString(startingIndex++);
+
+            member.ExpirationDate = reader.GetSafeDateTime(startingIndex++);
+
+            member.CreatedBy = new BaseUser();
+            member.CreatedBy.Id = reader.GetInt32(startingIndex++);
+            member.CreatedBy.FirstName = reader.GetSafeString(startingIndex++);
+            member.CreatedBy.MI = reader.GetSafeString(startingIndex++);
+            member.CreatedBy.LastName = reader.GetSafeString(startingIndex++);
+            member.CreatedBy.AvatarUrl = reader.GetSafeString(startingIndex++);
+
+            member.DateCreated = reader.GetSafeDateTime(startingIndex++);
+
+            return member;
+        }
+    }
+}
