@@ -1,0 +1,15 @@
+using Sabio.Models;
+using Sabio.Models.Domain.InviteMembers;
+using Sabio.Models.Requests.InviteMembers;
+using System.Collections.Generic;
+
+namespace Sabio.Services.Interfaces
+{
+    public interface IInviteMemberService
+    {
+        InviteMember GetByToken(string token);
+        InviteMemberEmail Add(InviteMemberAddRequest model, IUserAuthData user);
+        void DeleteById(int id);
+        void DeleteByCreatedBy(int id, int userId);
+    }
+}
