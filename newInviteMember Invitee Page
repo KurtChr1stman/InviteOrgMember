@@ -1,0 +1,280 @@
+import React, { useEffect, useState } from "react";
+import { Row, Col, Card, Button, Image } from "react-bootstrap";
+import { useLocation, Link, useNavigate } from "react-router-dom";
+import { Formik, Form, Field, ErrorMessage } from "formik";
+import Logo from "../../assets/images/brand/logo/geeks-ui.svg";
+import inviteMemberService from "services/inviteMemberService";
+import userService from "services/userService";
+import registrationSchema from "schemas/registrationSchema";
+import toastr from "toastr";
+import debug from "sabio-debug";
+import Swal from "sweetalert2";
+
+const _logger = debug.extend("NewInviteMember");
+
+function NewInviteMember() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const token = params.get("token");
+  const postionType = params.get("postionType");
+
+  const [tokenInfo, setTokenInfo] = useState({
+    id: 0,
+    firstName: "",
+    lastName: "",
+    email: "",
+    token: "",
+    userRoleType: { id: 0, name: "" },
+    positionType: { id: 0, name: "" },
+    organizationId: { id: 0, name: "" },
+    createdBy: { id: 0, firstName: "", lastName: "", avatarUrl: "", mi: "" },
+    isValid: true,
+  });
+
+  const orgMemberRegisterData = {
+    inviteId: tokenInfo.id,
+    organizationId: tokenInfo.organizationId.id,
+    roleId: tokenInfo.userRoleType.id,
+    positionType: tokenInfo.positionType.id,
+    organizationEmail: null,
+    email: tokenInfo.email,
+    firstName: tokenInfo.firstName,
+    lastName: tokenInfo.lastName,
+    mi: "",
+    avatarUrl: "",
+    password: "",
+    confirmPassword: "",
+    statusTypeId: 1,
+  };
+
+  useEffect(() => {
+    inviteMemberService
+      .getByToken(token)
+      .then(onGetByTokenSuccess)
+      .catch(onGetByTokenError);
+  }, []);
+
+  _logger("postionType", postionType);
+  _logger("orgMrmberRegisterData", orgMemberRegisterData);
+  _logger("token", token);
+
+  const onGetByTokenSuccess = (response) => {
+    toastr.success("Got by token");
+    _logger("onGetByTokenSuccess", response.item);
+    setTokenInfo(() => {
+      const newTokenInfo = response.item;
+      newTokenInfo.isValid = true;
+      return newTokenInfo;
+    });
+    _logger("tokenInfo for success", tokenInfo);
+  };
+
+  const onGetByTokenError = () => {
+    toastr.error("Failed to get by token");
+    setTokenInfo((prevState) => {
+      const newTokenInfo = { ...prevState };
+      newTokenInfo.isValid = false;
+      return newTokenInfo;
+    });
+  };
+
+  const handleSubmit = (values) => {
+    values.inviteId = tokenInfo.id;
+    _logger(values);
+    userService
+      .addOrgMember(values)
+      .then(onAddOrgMemberSuccess)
+      .catch(onAddOrgMemberError);
+  };
+
+  const onAddOrgMemberSuccess = (response) => {
+    _logger("onAddOrgMemberSuccess", response);
+    Swal.fire(
+      "Success!",
+      "Now check your email to confirm registration",
+      "success"
+    ).then(function () {
+      navigate("/login");
+    });
+  };
+
+  const onAddOrgMemberError = (error) => {
+    _logger("onAddOrgMemberError", error);
+    Swal.fire("Register Failed", "Something went wrong", "error");
+  };
+
+  const tokenIsValid = () => {
+    return (
+      <Row className="align-items-center justify-content-center g-0 min-vh-100">
+        <Col lg={5} md={5} className="py-8 py-xl-0">
+          <Card>
+            <Card.Body className="p-6">
+              <div className="mb-4">
+                <Link to="/">
+                  <Image src={Logo} className="mb-4" alt="" />
+                </Link>
+                <h1 className="mb-1 fw-bold">Finish Registration!</h1>
+                <span>
+                  Already have an account?{" "}
+                  <Link to="/login" className="ms-1">
+                    Sign in
+                  </Link>
+                </span>
+              </div>
+              <Formik
+                enableReinitialize={true}
+                initialValues={orgMemberRegisterData}
+                onSubmit={handleSubmit}
+                validationSchema={registrationSchema}
+              >
+                <Form>
+                  <Row>
+                    <Col lg={12} md={12} className="mb-3">
+                      <label htmlFor="email">Email</label>
+                      <Field
+                        disabled
+                        type="email"
+                        name="email"
+                        className="form-control"
+                      />
+                      <ErrorMessage
+                        name="email"
+                        component="div"
+                        className="form-has-error"
+                      />
+                    </Col>
+                    <Col lg={12} md={12} className="mb-3">
+                      <label htmlFor="firstName">First Name</label>
+                      <Field
+                        type="text"
+                        name="firstName"
+                        className="form-control"
+                      />
+                      <ErrorMessage
+                        name="firstName"
+                        component="div"
+                        className="form-has-error"
+                      />
+                    </Col>
+                    <Col lg={12} md={12} className="mb-3">
+                      <label htmlFor="mi">MI</label>
+                      <Field type="text" name="mi" className="form-control" />
+                      <ErrorMessage
+                        name="mi"
+                        component="div"
+                        className="form-has-error"
+                      />
+                    </Col>
+                    <Col lg={12} md={12} className="mb-3">
+                      <label htmlFor="lastName">Last Name</label>
+                      <Field
+                        type="text"
+                        name="lastName"
+                        className="form-control"
+                      />
+                      <ErrorMessage
+                        name="lastName"
+                        component="div"
+                        className="form-has-error"
+                      />
+                    </Col>
+                    <Col lg={12} md={12} className="mb-3">
+                      <label htmlFor="avatarUrl">Avatar Url</label>
+                      <Field
+                        type="text"
+                        name="avatarUrl"
+                        className="form-control"
+                      />
+                      <ErrorMessage
+                        name="mavatarUrli"
+                        component="div"
+                        className="form-has-error"
+                      />
+                    </Col>
+                    <Col lg={12} md={12} className="mb-3">
+                      <label htmlFor="password">Password</label>
+                      <Field
+                        type="password"
+                        name="password"
+                        className="form-control"
+                      />
+                      <ErrorMessage
+                        name="password"
+                        component="div"
+                        className="form-has-error"
+                      />
+                    </Col>
+                    <Col lg={12} md={12} className="mb-3">
+                      <label htmlFor="confirmPassword">Confirm Password</label>
+                      <Field
+                        type="password"
+                        name="confirmPassword"
+                        className="form-control"
+                      />
+                      <ErrorMessage
+                        name="confirmPassword"
+                        component="div"
+                        className="form-has-error"
+                      />
+                    </Col>
+                    <Col lg={12} md={12} className="mb-0 d-grid gap-2">
+                      <Button variant="primary" type="submit">
+                        Register
+                      </Button>
+                    </Col>
+                  </Row>
+
+                  <hr className="my-4" />
+                  <div className="mt-4 text-center">
+                    <Link
+                      to="#"
+                      className="btn-social btn-social-outline btn-facebook"
+                    >
+                      <i className="fab fa-facebook"></i>
+                    </Link>{" "}
+                    <Link
+                      to="#"
+                      className="btn-social btn-social-outline btn-twitter"
+                    >
+                      <i className="fab fa-twitter"></i>
+                    </Link>{" "}
+                    <Link
+                      to="#"
+                      className="btn-social btn-social-outline btn-linkedin"
+                    >
+                      <i className="fab fa-linkedin"></i>
+                    </Link>{" "}
+                    <Link
+                      to="#"
+                      className="btn-social btn-social-outline btn-github"
+                    >
+                      <i className="fab fa-github"></i>
+                    </Link>
+                  </div>
+                </Form>
+              </Formik>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    );
+  };
+
+  const tokenIsntValid = () => {
+    Swal.fire(
+      "Invite Invalid",
+      "Please try again or contact the invitor",
+      "error"
+    );
+    navigate("/login");
+  };
+
+  return (
+    <React.Fragment>
+      {tokenInfo.isValid ? tokenIsValid() : tokenIsntValid()}
+    </React.Fragment>
+  );
+}
+
+export default NewInviteMember;
