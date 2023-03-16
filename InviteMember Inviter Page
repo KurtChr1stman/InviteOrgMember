@@ -1,0 +1,172 @@
+import React, { useState } from "react";
+import { Row, Col, Card, Button } from "react-bootstrap";
+import PropTypes from "prop-types";
+import { Formik, Form, Field, ErrorMessage } from "formik";
+import InviteMemberSchema from "schemas/inviteMemberSchema";
+import inviteMemberService from "services/inviteMemberService";
+import toastr from "toastr";
+import debug from "sabio-debug";
+
+const _logger = debug.extend("InviteMember");
+
+function InviteMember(props) {
+  const currentUser = props.currentUser;
+  const [InviteMember] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    isOrgAdmin: false,
+    positionType: 1,
+    formikIsOrgAdmin: "",
+  });
+
+  _logger("currentUser", currentUser);
+
+  const onClickInvite = (values, { resetForm }) => {
+    resetForm();
+    if (values.formikIsOrgAdmin === "false") {
+      values.isOrgAdmin = false;
+    } else if (values.formikIsOrgAdmin === "true") {
+      values.isOrgAdmin = true;
+    }
+    _logger("values", values);
+    inviteMemberService
+      .addInvite(values)
+      .then(onInviteSuccess)
+      .catch(onInviteError);
+  };
+
+  const onInviteSuccess = () => {
+    toastr.success("Invite Sent!");
+  };
+
+  const onInviteError = () => {
+    toastr.success("Invite Failer");
+  };
+
+  return (
+    <React.Fragment>
+      <Row className="justify-content-center g-0 min-vh-100 mt-4">
+        <Col lg={5} md={5} className="py-08 py-xl-0">
+          <Card>
+            <Card.Body className="p-6">
+              <div className="mb-4">
+                <h1 className="mb-1 fw-bold">Invite a New Member!</h1>
+              </div>
+              <Formik
+                enableReinitialize={true}
+                initialValues={InviteMember}
+                onSubmit={onClickInvite}
+                validationSchema={InviteMemberSchema}
+              >
+                <Form>
+                  <Row>
+                    <Col lg={12} md={12} className="mb-3">
+                      <label htmlFor="email">
+                        New Member&apos;s First Name
+                      </label>
+                      <Field
+                        type="text"
+                        className="form-control mt-3"
+                        id="firstNameInput"
+                        name="firstName"
+                        placeholder="Add a First Name..."
+                      />
+                      <ErrorMessage
+                        name="firstName"
+                        component="div"
+                        className="form-has-error"
+                      />
+                    </Col>
+                    <Col lg={12} md={12} className="mb-3">
+                      <label htmlFor="firstName">
+                        New Member&apos;s Last Name
+                      </label>
+                      <Field
+                        type="text"
+                        className="form-control mt-3"
+                        id="lastNameInput"
+                        name="lastName"
+                        placeholder="Add a Last Name..."
+                      />
+                      <ErrorMessage
+                        name="lastName"
+                        component="div"
+                        className="form-has-error"
+                      />
+                    </Col>
+                    <label htmlFor="email">New Member&apos;s Role</label>
+                    <Col lg={12} md={12} className="mb-3">
+                      <Field
+                        name="formikIsOrgAdmin"
+                        id="formikIsOrgAdmin"
+                        as="select"
+                        className="form-select mt-3"
+                      >
+                        <option value="false">Organization Member</option>
+                        <option value="true">Organization Admin</option>
+                      </Field>
+                      <ErrorMessage
+                        name="userRoleTypeId"
+                        component="div"
+                        className="form-has-error"
+                      />
+                    </Col>
+                    <label htmlFor="email">New Member&apos;s Position</label>
+                    <Col lg={12} md={12} className="mb-3">
+                      <Field
+                        name="positionType"
+                        id="positionType"
+                        as="select"
+                        className="form-select mt-3"
+                      >
+                        <option value="1">Owner</option>
+                        <option value="2">Manager</option>
+                        <option value="3">Salesperson</option>
+                        <option value="4">Support</option>
+                        <option value="5">Service Technician</option>
+                      </Field>
+                      <ErrorMessage
+                        name="userRoleTypeId"
+                        component="div"
+                        className="form-has-error"
+                      />
+                    </Col>
+                    <Col lg={12} md={12} className="mb-3">
+                      <label htmlFor="lastName">New Member&apos;s Email</label>
+                      <Field
+                        type="text"
+                        className="form-control mt-3"
+                        id="emailNameInput"
+                        name="email"
+                        placeholder="Add a Email..."
+                      />
+                      <ErrorMessage
+                        name="email"
+                        component="div"
+                        className="form-has-error"
+                      />
+                    </Col>
+                    <Col lg={12} md={12} className="mb-0 d-grid gap-2">
+                      <Button variant="primary" type="submit">
+                        Invite
+                      </Button>
+                    </Col>
+                  </Row>
+                </Form>
+              </Formik>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </React.Fragment>
+  );
+}
+
+InviteMember.propTypes = {
+  currentUser: PropTypes.shape({
+    roles: PropTypes.arrayOf(PropTypes.string).isRequired,
+  }),
+};
+
+export default InviteMember;
